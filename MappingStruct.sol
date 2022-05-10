@@ -3,26 +3,42 @@
 pragma solidity ^0.8.13;
 
 contract MappingStruct {
-    mapping(address => uint) public balanceReceived;
+  struct Payment {
+    uint amount;
+    uint timestamps;
+  }
+  struct Balance {
+    uint totalBalance;
+    uint numPayments;
 
-    function getBalance() public view returns(uint) {
-        return address(this).balance;
-    }
-    function sendMoney() public payable {
-        balanceReceived[msg.sender] += msg.value;
-    }
-    function withdrawMoney(address payable _to, uint _amount) public {
-        require(balanceReceived[msg.sender] >= _amount, "Not enough funds."); // Check if balance has enough funds.
+    mapping(uint => Payment) payments;
+  }
 
-        balanceReceived[msg.sender] -= _amount;
+  mapping(address => Balance) public balanceReceived;
 
-        _to.transfer(_amount);
-    }
-    function withdrawAllMoney(address payable _to) public {
-        uint balanceToSend = balanceReceived[msg.sender];
+  function getBalance() public view returns(uint) {
+    return address(this).balance;
+  }
+  function sendMoney() public payable {
+    balanceReceived[msg.sender].totalBalance += msg.value;
 
-        balanceReceived[msg.sender] = 0;
+    Payment memory payment = Payment(msg.value, block.timestamp);
 
-        _to.transfer(balanceToSend);
-    }
+    balanceReceived[msg.sender].payments[balanceReceived[msg.sender].numPayments] = payment;
+    balanceReceived[msg.sender].numPayments++;
+  }
+  function withdrawMoney(address payable _to, uint _amount) public {
+    require(balanceReceived[msg.sender].totalBalance >= _amount, "Not enough funds."); // Check if balance has enough funds.
+
+    balanceReceived[msg.sender].totalBalance -= _amount;
+
+    _to.transfer(_amount);
+  }
+  function withdrawAllMoney(address payable _to) public {
+    uint balanceToSend = balanceReceived[msg.sender].totalBalance;
+
+    balanceReceived[msg.sender].totalBalance = 0;
+
+    _to.transfer(balanceToSend);
+  }
 }
